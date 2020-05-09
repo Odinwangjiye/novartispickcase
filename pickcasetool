@@ -45,6 +45,7 @@ Sub updateData()
         Other_Count = 0
         J_Assessment_Count = 0
         'Main
+        'Test
         For i = 1 To Workbooks(input_BookName).Worksheets("NPKK").UsedRange.Rows.Count Step 1
         
             If Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "k") = "" Then
