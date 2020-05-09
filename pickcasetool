@@ -1,0 +1,386 @@
+Public Function ChooseFile() As String
+
+    Dim dlgOpen As FileDialog
+    
+    Set dlgOpen = Application.FileDialog(msoFileDialogFilePicker)
+    
+    With dlgOpen
+    
+        If .Show = -1 Then
+        
+            ChooseFile = .SelectedItems(1)
+        
+        End If
+    
+    End With
+
+End Function
+Sub selectMasterData()
+    ThisWorkbook.Sheets("Pick_Case-Tool").Range("E8").Value = ChooseFile()
+End Sub
+Sub updateData()
+    If ThisWorkbook.Sheets("Pick_Case-Tool").Range("E8") = "" Then
+        'File selected or not
+        MsgBox "Please select master data file"
+    ElseIf ThisWorkbook.Sheets("Pick_Case-Tool").Range("G6") = "" Then
+        MsgBox "Please select username"
+    Else
+        'File opened or not
+        Dim input_BookName As String
+        input_BookName = Split(ThisWorkbook.Sheets("Pick_Case-Tool").Range("E8").Value, "\")(UBound(Split(ThisWorkbook.Sheets("Pick_Case-Tool").Range("E8").Value, "\")))
+        Dim x
+        For x = 1 To Workbooks.Count
+            If Workbooks(x).Name = input_BookName Then
+                Workbooks(input_BookName).Activate
+                Exit For
+            ElseIf x = Workbooks.Count Then
+                Workbooks.Open (input_BookName)
+            End If
+        Next x
+        'Init
+        Dim i, FDE_Count, QC_Count, Other_Count As Integer
+        Dim J_Assessment_Count As Integer
+        FDE_Count = 0
+        QC_Count = 0
+        Other_Count = 0
+        J_Assessment_Count = 0
+        'Main
+        For i = 1 To Workbooks(input_BookName).Worksheets("NPKK").UsedRange.Rows.Count Step 1
+        
+            If Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "k") = "" Then
+                FDE_Count = FDE_Count + 1
+            End If
+            
+            If Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "w") = "" And (Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "v") = "Co Check Jp" Or Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "v") = "FDE QC JP") Then
+                QC_Count = QC_Count + 1
+            End If
+            
+            If Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "v") = "J Assessment" Then
+                If ThisWorkbook.Sheets("Pick_Case-Tool").Cells(15, "e") = "" Then
+                    ThisWorkbook.Sheets("Pick_Case-Tool").Cells(15, "e") = Date
+                    If Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "l") = Date Then
+                        J_Assessment_Count = J_Assessment_Count + 1
+                    End If
+                Else
+                    If Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "l") = ThisWorkbook.Sheets("Pick_Case-Tool").Cells(15, "e").Value Then
+                        J_Assessment_Count = J_Assessment_Count + 1
+                    End If
+                End If
+            End If
+            
+            If Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "v") <> "J Assessment" And Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "v") <> "Co Check Jp" And Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "v") <> "FDE QC JP" Then
+                If ThisWorkbook.Sheets("Pick_Case-Tool").Cells(15, "e") = "" Then
+                    ThisWorkbook.Sheets("Pick_Case-Tool").Cells(15, "e") = Date
+                    If Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "l") = Date Then
+                        Other_Count = Other_Count + 1
+                    End If
+                Else
+                    If Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "l") = ThisWorkbook.Sheets("Pick_Case-Tool").Cells(15, "e").Value Then
+                        Other_Count = Other_Count + 1
+                    End If
+                End If
+            End If
+            
+        Next i
+        ThisWorkbook.Sheets("Pick_Case-Tool").Cells(12, "h") = FDE_Count
+        ThisWorkbook.Sheets("Pick_Case-Tool").Cells(13, "h") = QC_Count
+        ThisWorkbook.Sheets("Pick_Case-Tool").Cells(14, "h") = J_Assessment_Count
+        ThisWorkbook.Sheets("Pick_Case-Tool").Cells(15, "h") = Other_Count
+        ThisWorkbook.Save
+    End If
+End Sub
+Sub FDE_Start()
+    If ThisWorkbook.Sheets("Pick_Case-Tool").Range("E8") = "" Then
+        'File selected or not
+        MsgBox "Please select master data file"
+    ElseIf ThisWorkbook.Sheets("Pick_Case-Tool").Range("G6") = "" Then
+        MsgBox "Please select username"
+    Else
+        'File opened or not
+        Dim input_BookName As String
+        input_BookName = Split(ThisWorkbook.Sheets("Pick_Case-Tool").Range("E8").Value, "\")(UBound(Split(ThisWorkbook.Sheets("Pick_Case-Tool").Range("E8").Value, "\")))
+        Dim x
+            For x = 1 To Workbooks.Count
+            If Workbooks(x).Name = input_BookName Then
+                Workbooks(input_BookName).Activate
+                Exit For
+            ElseIf x = Workbooks.Count Then
+                Workbooks.Open (input_BookName)
+            End If
+        Next x
+        'Init
+        Application.DisplayAlerts = False
+        Dim i, j, k, l, earlistRow As Integer
+        Dim targetRow As Integer
+        Dim currentRow As Integer
+        Dim earlistTime As Date
+        'Main
+        For i = 1 To Workbooks(input_BookName).Worksheets("NPKK").UsedRange.Rows.Count Step 1
+            If Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "k") = "" And Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "h") = "1" Then
+                If currentRow = 0 Then
+                    currentRow = i
+                End If
+                If Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "e").Value < Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "e").Value Then
+                    currentRow = i
+                ElseIf Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "e").Value = Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "e").Value Then
+                    If currentRow > i Then
+                        currentRow = i
+                    End If
+                End If
+            End If
+        Next i
+        
+       
+        If currentRow = 0 Then
+            For j = 1 To Workbooks(input_BookName).Worksheets("NPKK").UsedRange.Rows.Count Step 1
+                If Workbooks(input_BookName).Worksheets("NPKK").Cells(j, "k") = "" And Workbooks(input_BookName).Worksheets("NPKK").Cells(j, "i") = "2" Then
+                    If currentRow = 0 Then
+                        currentRow = j
+                    End If
+                    If Workbooks(input_BookName).Worksheets("NPKK").Cells(j, "e").Value < Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "e").Value Then
+                        currentRow = j
+                    ElseIf Workbooks(input_BookName).Worksheets("NPKK").Cells(j, "e").Value = Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "e").Value Then
+                        If currentRow > j Then
+                            currentRow = j
+                        End If
+                    End If
+                End If
+            Next j
+        End If
+        
+        If currentRow = 0 Then
+            For k = 1 To Workbooks(input_BookName).Worksheets("NPKK").UsedRange.Rows.Count Step 1
+                If Workbooks(input_BookName).Worksheets("NPKK").Cells(k, "k") = "" And Workbooks(input_BookName).Worksheets("NPKK").Cells(k, "j") = "3" Then
+                    If currentRow = 0 Then
+                        currentRow = k
+                    End If
+                    If Workbooks(input_BookName).Worksheets("NPKK").Cells(k, "e").Value < Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "e").Value Then
+                        currentRow = k
+                    ElseIf Workbooks(input_BookName).Worksheets("NPKK").Cells(k, "e").Value = Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "e").Value Then
+                        If currentRow > k Then
+                            currentRow = k
+                        End If
+                    End If
+                End If
+            Next k
+        End If
+        
+        If currentRow = 0 Then
+            For l = 1 To Workbooks(input_BookName).Worksheets("NPKK").UsedRange.Rows.Count Step 1
+                If Workbooks(input_BookName).Worksheets("NPKK").Cells(l, "k") = "" And Workbooks(input_BookName).Worksheets("NPKK").Cells(l, "h") = "" And Workbooks(input_BookName).Worksheets("NPKK").Cells(l, "i") = "" And Workbooks(input_BookName).Worksheets("NPKK").Cells(l, "j") = "" Then
+                    If currentRow = 0 Then
+                        currentRow = l
+                    End If
+                    If Workbooks(input_BookName).Worksheets("NPKK").Cells(l, "e").Value < Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "e").Value Then
+                        currentRow = l
+                    ElseIf Workbooks(input_BookName).Worksheets("NPKK").Cells(l, "e").Value = Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "e").Value Then
+                        If currentRow > l Then
+                            currentRow = l
+                        End If
+                    End If
+                End If
+            Next l
+        End If
+        
+         If currentRow <> 0 Then
+            If Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "k") <> "" Or Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "l") <> "" Or Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "n") <> "" Then
+                MsgBox "This case has been processed, please pick another case(Click FDE Start Button) again"
+            Else
+                Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "k") = ThisWorkbook.Sheets("Pick_Case-Tool").Cells(6, "g").Value
+                Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "l") = Date
+                Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "n") = Time
+                ThisWorkbook.Sheets("Pick_Case-Tool").Cells(18, "e") = Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "g").Value
+                ThisWorkbook.Sheets("Pick_Case-Tool").Cells(18, "g") = Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "k").Value
+            End If
+        End If
+        
+        Workbooks(input_BookName).Save
+    End If
+End Sub
+Sub FDE_End()
+    If ThisWorkbook.Sheets("Pick_Case-Tool").Range("E8") = "" Then
+        'File selected or not
+        MsgBox "Please select master data file"
+    ElseIf ThisWorkbook.Sheets("Pick_Case-Tool").Range("G6") = "" Then
+        MsgBox "Please select username"
+    Else
+        'File opened or not
+        Dim input_BookName As String
+        input_BookName = Split(ThisWorkbook.Sheets("Pick_Case-Tool").Range("E8").Value, "\")(UBound(Split(ThisWorkbook.Sheets("Pick_Case-Tool").Range("E8").Value, "\")))
+        Dim x
+        For x = 1 To Workbooks.Count
+            If Workbooks(x).Name = input_BookName Then
+                Workbooks(input_BookName).Activate
+                Exit For
+            ElseIf x = Workbooks.Count Then
+                Workbooks.Open (input_BookName)
+            End If
+        Next x
+        'Init
+        Dim i As Integer
+        Dim date1, date2 As Date
+        Application.DisplayAlerts = False
+        'Main
+        For i = 1 To Workbooks(input_BookName).Worksheets("NPKK").UsedRange.Rows.Count Step 1
+            If Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "k") <> "" And Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "l") <> "" And Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "n") <> "" And Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "o") = "" And Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "k") = ThisWorkbook.Sheets("Pick_Case-Tool").Range("G6").Value Then
+                If Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "q") = "" Or Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "r") = "" Or Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "s") = "" Or Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "t") = "" Or Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "u") = "" Or Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "v") = "" Then
+                MsgBox "Column Q-V have empty value"
+                Else
+                Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "o") = Time
+                date1 = Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "n").Value
+                date2 = Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "o").Value
+                Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "p").NumberFormat = "General"
+                Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "p") = DateDiff("n", date1, date2)
+                Workbooks(input_BookName).Save
+                End If
+            End If
+        Next i
+    End If
+End Sub
+Sub QC_Start()
+    If ThisWorkbook.Sheets("Pick_Case-Tool").Range("E8") = "" Then
+        'File selected or not
+        MsgBox "Please select master data file"
+    ElseIf ThisWorkbook.Sheets("Pick_Case-Tool").Range("G6") = "" Then
+        MsgBox "Please select username"
+    Else
+        'File opened or not
+        Dim input_BookName As String
+        input_BookName = Split(ThisWorkbook.Sheets("Pick_Case-Tool").Range("E8").Value, "\")(UBound(Split(ThisWorkbook.Sheets("Pick_Case-Tool").Range("E8").Value, "\")))
+        Dim x
+        For x = 1 To Workbooks.Count
+            If Workbooks(x).Name = input_BookName Then
+                Workbooks(input_BookName).Activate
+                Exit For
+            ElseIf x = Workbooks.Count Then
+                Workbooks.Open (input_BookName)
+            End If
+        Next x
+        'Init
+        Application.DisplayAlerts = False
+        Dim i, j, k, l, earlistRow As Integer
+        Dim targetRow As Integer
+        Dim currentRow As Integer
+        Dim earlistTime As Date
+        'Main
+        For i = 1 To Workbooks(input_BookName).Worksheets("NPKK").UsedRange.Rows.Count Step 1
+            If Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "w") = "" And (Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "v") = "Co Check Jp" Or Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "v") = "FDE QC JP") And Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "h") = "1" Then
+                If currentRow = 0 Then
+                    currentRow = i
+                End If
+                If Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "e").Value < Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "e").Value Then
+                    currentRow = i
+                ElseIf Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "e").Value = Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "e").Value Then
+                    If currentRow > i Then
+                        currentRow = i
+                    End If
+                End If
+            End If
+        Next i
+        
+       
+        If currentRow = 0 Then
+            For j = 1 To Workbooks(input_BookName).Worksheets("NPKK").UsedRange.Rows.Count Step 1
+                If Workbooks(input_BookName).Worksheets("NPKK").Cells(j, "w") = "" And (Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "v") = "Co Check Jp" Or Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "v") = "FDE QC JP") And Workbooks(input_BookName).Worksheets("NPKK").Cells(j, "i") = "2" Then
+                    If currentRow = 0 Then
+                        currentRow = j
+                    End If
+                    If Workbooks(input_BookName).Worksheets("NPKK").Cells(j, "e").Value < Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "e").Value Then
+                        currentRow = j
+                    ElseIf Workbooks(input_BookName).Worksheets("NPKK").Cells(j, "e").Value = Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "e").Value Then
+                        If currentRow > j Then
+                            currentRow = j
+                        End If
+                    End If
+                End If
+            Next j
+        End If
+        
+        If currentRow = 0 Then
+            For k = 1 To Workbooks(input_BookName).Worksheets("NPKK").UsedRange.Rows.Count Step 1
+                If Workbooks(input_BookName).Worksheets("NPKK").Cells(k, "w") = "" And (Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "v") = "Co Check Jp" Or Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "v") = "FDE QC JP") And Workbooks(input_BookName).Worksheets("NPKK").Cells(k, "j") = "3" Then
+                    If currentRow = 0 Then
+                        currentRow = k
+                    End If
+                    If Workbooks(input_BookName).Worksheets("NPKK").Cells(k, "e").Value < Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "e").Value Then
+                        currentRow = k
+                    ElseIf Workbooks(input_BookName).Worksheets("NPKK").Cells(k, "e").Value = Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "e").Value Then
+                        If currentRow > k Then
+                            currentRow = k
+                        End If
+                    End If
+                End If
+            Next k
+        End If
+        
+        If currentRow = 0 Then
+            For l = 1 To Workbooks(input_BookName).Worksheets("NPKK").UsedRange.Rows.Count Step 1
+                If Workbooks(input_BookName).Worksheets("NPKK").Cells(l, "w") = "" And (Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "v") = "Co Check Jp" Or Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "v") = "FDE QC JP") And Workbooks(input_BookName).Worksheets("NPKK").Cells(l, "h") = "" And Workbooks(input_BookName).Worksheets("NPKK").Cells(l, "i") = "" And Workbooks(input_BookName).Worksheets("NPKK").Cells(l, "j") = "" Then
+                    If currentRow = 0 Then
+                        currentRow = l
+                    End If
+                    If Workbooks(input_BookName).Worksheets("NPKK").Cells(l, "e").Value < Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "e").Value Then
+                        currentRow = l
+                    ElseIf Workbooks(input_BookName).Worksheets("NPKK").Cells(l, "e").Value = Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "e").Value Then
+                        If currentRow > l Then
+                            currentRow = l
+                        End If
+                    End If
+                End If
+            Next l
+        End If
+        
+         If currentRow <> 0 Then
+            If Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "w") <> "" Or Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "x") <> "" Or Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "z") <> "" Then
+                MsgBox "This case has been processed, please pick another case(Click QC Start Button) again"
+            Else
+                Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "w") = ThisWorkbook.Sheets("Pick_Case-Tool").Cells(6, "g").Value
+                Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "x") = Date
+                Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "z") = Time
+                ThisWorkbook.Sheets("Pick_Case-Tool").Cells(21, "e") = Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "g").Value
+                ThisWorkbook.Sheets("Pick_Case-Tool").Cells(21, "g") = Workbooks(input_BookName).Worksheets("NPKK").Cells(currentRow, "w").Value
+            End If
+        End If
+    End If
+End Sub
+Sub QC_End()
+    If ThisWorkbook.Sheets("Pick_Case-Tool").Range("E8") = "" Then
+        'File selected or not
+        MsgBox "Please select master data file"
+    ElseIf ThisWorkbook.Sheets("Pick_Case-Tool").Range("G6") = "" Then
+        MsgBox "Please select username"
+    Else
+        'File opened or not
+        Dim input_BookName As String
+        input_BookName = Split(ThisWorkbook.Sheets("Pick_Case-Tool").Range("E8").Value, "\")(UBound(Split(ThisWorkbook.Sheets("Pick_Case-Tool").Range("E8").Value, "\")))
+        Dim x
+        For x = 1 To Workbooks.Count
+            If Workbooks(x).Name = input_BookName Then
+                Workbooks(input_BookName).Activate
+                Exit For
+            ElseIf x = Workbooks.Count Then
+                Workbooks.Open (input_BookName)
+            End If
+        Next x
+        'Init
+        Dim i As Integer
+        Dim date1, date2 As Date
+        Application.DisplayAlerts = False
+        'Main
+        For i = 1 To Workbooks(input_BookName).Worksheets("NPKK").UsedRange.Rows.Count Step 1
+            If Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "w") <> "" And Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "x") <> "" And Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "z") <> "" And Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "aa") = "" And Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "w") = ThisWorkbook.Sheets("Pick_Case-Tool").Range("G6").Value Then
+                If Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "ac") = "" Or Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "ad") = "" Or Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "ae") = "" Or Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "af") = "" Or Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "ag") = "" Then
+                MsgBox "Column AC-AG have empty value"
+                Else
+                Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "AA") = Time
+                date1 = Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "z").Value
+                date2 = Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "aa").Value
+                Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "ab").NumberFormat = "General"
+                Workbooks(input_BookName).Worksheets("NPKK").Cells(i, "ab") = DateDiff("n", date1, date2)
+                Workbooks(input_BookName).Save
+                End If
+            End If
+        Next i
+    End If
+End Sub
+
